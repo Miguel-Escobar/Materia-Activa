@@ -10,7 +10,7 @@ masa=1
 epsilon=1
 
 # Parámetros globales
-sqrtN = 5
+sqrtN = 32
 N=sqrtN*sqrtN # Número de partículas
 L=np.sqrt(N*sigma**2) # Tamaño de la caja
 Temperatura=5 # Temperatura
