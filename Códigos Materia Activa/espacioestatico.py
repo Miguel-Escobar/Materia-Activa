@@ -9,12 +9,12 @@ import pdb
 sigma=1
 masa=1
 epsilon=1
-sqrtN=10
+sqrtN=25
 Temperatura=0.1
 Ttotal = 2
 Transiente = 0
 dt= 1e-3
-velocitymagnitude = 1
+velocitymagnitude = 3
 D_r = 1
 D_T = .1
 frameskip = 10
