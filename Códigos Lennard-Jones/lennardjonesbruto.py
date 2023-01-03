@@ -10,10 +10,10 @@ masa=1
 epsilon=1
 
 # Parámetros globales
-sqrtN = 32
+sqrtN = 5
 N=sqrtN*sqrtN # Número de partículas
 L=np.sqrt(N*sigma**2) # Tamaño de la caja
-Temperatura=5 # Temperatura
+Temperatura=1 # Temperatura
 Ttotal = 10 # Tiempo total de simulación
 Transiente = 5
 dt= 0.01 # Paso de tiempo
