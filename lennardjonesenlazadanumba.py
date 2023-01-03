@@ -4,7 +4,8 @@ from scipy.stats import norm
 from tqdm import trange
 from matplotlib.animation import FuncAnimation
 import pdb
-
+import numba
+from numba import jit
 # Parametros y variables globales:
 sigma=1
 masa=1
@@ -15,8 +16,8 @@ L=int(np.sqrt(N*sigma**2)) # Tamaño de la caja. Puedo poner int pq N es un cuad
 radioc=2.5*sigma 
 radioc2=radioc**2
 Temperatura=0.5
-Ttotal = 10
-Transiente = 5
+Ttotal = .50
+Transiente = .05
 dt= 0.01
 Npasos = int(Ttotal/dt)
 Ntransiente = int(Transiente/dt)
@@ -24,6 +25,7 @@ Nceldas = int(L/radioc)
 delta = L/Nceldas
 # Funciones:
 
+@jit
 def fuerzapar(p1, p2):
     dx=p1[0]-p2[0]
     dy=p1[1]-p2[1]
@@ -82,46 +84,49 @@ def crearlista():
         for j in range(Nceldas):
             lista[i].append([])
     return lista
-# Defino arreglo de listas enlazadas:
 
-listaposiciones = []
-listavelocidades = []
+@jit(cache=True)
+def simulador(particles, velocities):
+    listaposiciones = []
+    listavelocidades = []
+    for t in trange(Ntransiente + Npasos):
+        accel = np.zeros((N, 2))
+        lista = crearlista()
+        for particle in particles:
+            n = int(particle[0]/delta) 
+            m = int(particle[1]/delta)
+            lista[n][m].append(particle)
+        for i in range(N):
+            particle = particles[i]
+            n0 = int(particle[0]/delta)
+            m0 = int(particle[1]/delta)
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    n = (n0 + dx) % Nceldas
+                    m = (m0 + dy) % Nceldas
+                    for otherparticle in lista[n][m]:
+                        if not np.array_equal(otherparticle, particle):
+                            accel[i] += fuerzapar(particle, otherparticle)/masa
+        if t % 100 == 0:
+            termostato()
+        
+        velocities = velocities + accel*dt
+        newarray = particles + velocities*dt # Truquito pq o sino mod actuaba raro.
+        particles = np.mod(newarray, L) # Para mantener las condiciones de borde.
+
+        if t >= Ntransiente:
+            listaposiciones.append(particles.copy())
+            listavelocidades.append(velocities.copy())
+
+    listaposiciones = np.array(listaposiciones)
+    listavelocidades = np.array(listavelocidades)
+    return listaposiciones, listavelocidades
+
 particles = np.zeros((N, 2))
 velocities = np.zeros((N,2))
 condicioninicial()
 termostato()
-
-for t in trange(Ntransiente + Npasos):
-    accel = np.zeros((N, 2))
-    lista = crearlista()
-    for particle in particles:
-        n = int(particle[0]/delta) 
-        m = int(particle[1]/delta)
-        lista[n][m].append(particle)
-    for i in range(N):
-        particle = particles[i]
-        n0 = int(particle[0]/delta)
-        m0 = int(particle[1]/delta)
-        for dx in (-1, 0, 1):
-            for dy in (-1, 0, 1):
-                n = (n0 + dx) % Nceldas
-                m = (m0 + dy) % Nceldas
-                for otherparticle in lista[n][m]:
-                    if not np.array_equal(otherparticle, particle):
-                        accel[i] += fuerzapar(particle, otherparticle)/masa
-    if t % 100 == 0:
-        termostato()
-    
-    velocities = velocities + accel*dt
-    newarray = particles + velocities*dt # Truquito pq o sino mod actuaba raro.
-    particles = np.mod(newarray, L) # Para mantener las condiciones de borde.
-
-    if t >= Ntransiente:
-        listaposiciones.append(particles.copy())
-        listavelocidades.append(velocities.copy())
-
-listaposiciones = np.array(listaposiciones)
-listavelocidades = np.array(listavelocidades)
+listaposiciones, listavelocidades = simulador(particles, velocities)
 
 fig = plt.figure(figsize=(7,7))
 fig.clf()
