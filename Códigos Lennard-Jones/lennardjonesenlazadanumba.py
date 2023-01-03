@@ -5,7 +5,7 @@ from tqdm import trange
 from matplotlib.animation import FuncAnimation
 import pdb
 import numba
-from numba import jit
+from numba import njit, jit
 # Parametros y variables globales:
 sigma=1
 masa=1
@@ -25,7 +25,7 @@ Nceldas = int(L/radioc)
 delta = L/Nceldas
 # Funciones:
 
-@jit
+@njit
 def fuerzapar(p1, p2):
     dx=p1[0]-p2[0]
     dy=p1[1]-p2[1]
@@ -55,14 +55,14 @@ def condicioninicial():
     particles[:, 1] = np.meshgrid(lin,lin)[1].flatten() + espaciado/2
     return
 
-def termostato():
-    global velocities
+@njit
+def termostato(velocities):
     vx = velocities[:,0]
     vy = velocities[:,1]
     Tcinetica = np.mean((masa/2)*(vx**2+vy**2))
     ajuste = np.sqrt(Temperatura/Tcinetica)
     velocities = velocities*ajuste
-    return
+    return velocities
 
 
 def animable(i):
@@ -76,7 +76,7 @@ def animable(i):
     tiempo_text.set_text("t = %.2f" % tiempo)
     return scatter, delta_text, tiempo_text
 
-
+@jit
 def crearlista():
     lista = []
     for i in range(Nceldas):
@@ -85,11 +85,11 @@ def crearlista():
             lista[i].append([])
     return lista
 
-@jit(cache=True)
-def simulador(particles, velocities):
+@njit
+def simulador(particles, velocities, crearlista, termostato):
     listaposiciones = []
     listavelocidades = []
-    for t in trange(Ntransiente + Npasos):
+    for t in range(Ntransiente + Npasos):
         accel = np.zeros((N, 2))
         lista = crearlista()
         for particle in particles:
@@ -108,7 +108,7 @@ def simulador(particles, velocities):
                         if not np.array_equal(otherparticle, particle):
                             accel[i] += fuerzapar(particle, otherparticle)/masa
         if t % 100 == 0:
-            termostato()
+            velocities = termostato(velocities)
         
         velocities = velocities + accel*dt
         newarray = particles + velocities*dt # Truquito pq o sino mod actuaba raro.
@@ -125,8 +125,8 @@ def simulador(particles, velocities):
 particles = np.zeros((N, 2))
 velocities = np.zeros((N,2))
 condicioninicial()
-termostato()
-listaposiciones, listavelocidades = simulador(particles, velocities)
+velocities = termostato(velocities)
+listaposiciones, listavelocidades = simulador(particles, velocities, crearlista, termostato)
 
 fig = plt.figure(figsize=(7,7))
 fig.clf()
