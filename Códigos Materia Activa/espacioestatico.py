@@ -1,23 +1,27 @@
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 from tqdm import trange
-from matplotlib.animation import FuncAnimation
-import pdb
-
+from matplotlib.animation import FuncAnimation, FFMpegWriter
+import numba
+from numba import njit, jit
+matplotlib.rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\Desktop\\ffmpeg\\bin\\ffmpeg.exe"
+writer = FFMpegWriter(fps=60, metadata=dict(artist='Me'), bitrate=1800)
 # Parametros y variables globales:
 sigma=1
 masa=1
 epsilon=1
-sqrtN=25
+sqrtN=64
 Temperatura=0.1
 Ttotal = 2
 Transiente = 0
-dt= 1e-3
+dt= 1e-4
 velocitymagnitude = 3
-D_r = 1
-D_T = .1
+D_r = .1
+D_T = .01
 frameskip = 10
+softening = 0.1
 
 radioc=2.5*sigma 
 radioc2=radioc**2
@@ -33,6 +37,7 @@ coefphi = np.sqrt(2*D_r)
 coefpos = np.sqrt(2*D_T)
 # Funciones:
 
+@jit
 def fuerzapar(p1, p2):
     dx=p1[0]-p2[0]
     dy=p1[1]-p2[1]
@@ -47,7 +52,7 @@ def fuerzapar(p1, p2):
     moddif = np.array([dx, dy])
     rad = dx**2 + dy**2
     if rad < radioc2:
-        fuerza = 48*epsilon*((2*sigma**12)/(rad**7))*moddif#48*epsilon*((2*sigma**12)/(rad**7))*moddif
+        fuerza = 48*epsilon*((2*sigma**12)/(rad**7 + softening**7))*moddif#48*epsilon*((2*sigma**12)/(rad**7))*moddif
         return fuerza
     else:
         return 0
@@ -82,12 +87,14 @@ def termostato():
 
 
 def animable(i):
-    global listaposiciones, scatter
+    global listaposiciones, scatter, ax, listaL
+    ax.set_xlim((0, listaL[i]))
+    ax.set_ylim((0, listaL[i]))
     tiempo = dt*i
     data = listaposiciones[i]
     scatter.set_offsets(data)
     tiempo_text.set_text("t = %.2f" % tiempo)
-    return scatter, tiempo_text
+    return scatter, tiempo_text, ax
 
 
 def crearlista():
@@ -101,6 +108,7 @@ def crearlista():
 
 listaposiciones = []
 listavelocidades = []
+listaL = []
 particles = np.zeros((N, 2), dtype="float64")
 phi = np.random.uniform(low=-np.pi, high=np.pi, size=N)
 velocidadinteractiva = np.zeros((N,2))
@@ -124,10 +132,10 @@ for t in trange(Ntransiente + Npasos):
                 for otherparticle in lista[n][m]:
                     if not np.array_equal(otherparticle, particle):
                         accel[i] += fuerzapar(particle, otherparticle)/masa
-    phi += np.random.normal(N)*coefphi*sqrtdt
     if t % 100 == 0:
         termostato()
-    
+
+    phi += np.random.normal(size=N)*coefphi*sqrtdt
     velocidadinteractiva = velocidadinteractiva + accel*dt
     newarray = particles + (velocidadinteractiva + rotationarray(phi))*dt + np.random.normal(size=(N, 2))*coefpos*sqrtdt# Truquito pq o sino mod actuaba raro.
     particles = np.mod(newarray, L) # Para mantener las condiciones de borde.
@@ -139,6 +147,7 @@ for t in trange(Ntransiente + Npasos):
         if t%frameskip == 0:
             listaposiciones.append(particles.copy())
             listavelocidades.append(velocidadinteractiva.copy())
+            listaL.append(L)
 
 listaposiciones = np.array(listaposiciones)
 listavelocidades = np.array(listavelocidades)
@@ -149,4 +158,5 @@ ax = plt.axes(xlim=(0,L),ylim=(0,L))
 scatter = ax.scatter(listaposiciones[0,0], listaposiciones[0,1])
 tiempo_text = ax.text(0.02, 0.90, '', transform=ax.transAxes)
 anim = FuncAnimation(fig, animable, frames=int(Npasos/frameskip), interval=33)
+anim.save('anim.mp4', writer=writer) 
 plt.show()
