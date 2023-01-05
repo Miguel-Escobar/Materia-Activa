@@ -10,12 +10,12 @@ writer = FFMpegWriter(fps=60, metadata=dict(artist='Me'), bitrate=1800)
 
 # Parametros y variables globales:
 
-sqrtN=10
+sqrtN=23
 Ttotal = 2
 Ttransient = 0
 dt = 1e-3
-Temperatura=0.1
-packing = .8
+Temperatura= 0.0
+packing = .6
 timesexpansion = 1
 
 
@@ -25,13 +25,13 @@ tipo = int(input("Press 1 for Lennard Jones potential, 2 for Harmonic potential:
 sigma=1
 masa=1
 epsilon=1
-radiocorte = 2.5*sigma
+radiocorte = sigma  # 2.5sigma era antes
 
 # Parametros activos:
 
-velocitymagnitude = 1
-D_r = 0.1
-D_T = 0.1
+velocitymagnitude = 10
+D_r = 0.0
+D_T = 0.0
 
 # Parámetro animación:
 
@@ -39,14 +39,15 @@ frameskip = 10
 
 # Funciones de otras cosas:
 
-boxsize = sqrtN*sigma*np.sqrt(np.pi/packing)
 Nparticles = sqrtN*sqrtN
 Nsteps = int(Ttotal/dt)
 Ntransient = int(Ttransient/dt)
 if tipo == 1:
-    Ncells = int(boxsize/radiocorte)
+    boxsize = sqrtN*(sigma/2)*np.sqrt(np.pi/packing)
+    Ncells = max(int(boxsize/radiocorte), 1)
 if tipo == 2:
-    Ncells = int(boxsize/sigma)
+    boxsize = sqrtN*(sigma)*np.sqrt(np.pi/2*packing)
+    Ncells = max(int(boxsize/sigma), 1)
 delta = boxsize/Ncells
 ratio = timesexpansion**(1/Nsteps)
 coefphi = np.sqrt(2*D_r*dt)
@@ -141,6 +142,11 @@ def fill_cell_list(particles, delta, emptylist):
 
 
 def condicioninicial(Nparticles, temperatura, masa, boxsize):
+    """
+    Sets as the initial condition particles in a 2D mesh and random initial velocities.
+    It also adds random angles to the persistance velocities (separately from thermal 
+    velocities).
+    """
     velocities = np.sqrt(2*temperatura/masa)*np.random.normal(size=(Nparticles,2))
     velocities[:, 0] = velocities[:,0] - np.mean(velocities[:,0])
     velocities[:, 1] = velocities[:,1] - np.mean(velocities[:,1])
@@ -222,17 +228,9 @@ ax = plt.axes(xlim=(0,boxsize),ylim=(0,boxsize))
 scatter = ax.scatter(store_positions[0,0], store_positions[0,1])
 tiempo_text = ax.text(0.02, 0.90, '', transform=ax.transAxes)
 anim = FuncAnimation(fig, animable, frames=int(Nsteps/frameskip), interval=33)
-#anim.save('anim.mp4', writer=writer) 
+if tipo == 1:
+    anim.save('lennardjones%i.mp4' % Nparticles, writer=writer)
+if tipo == 2:
+    anim.save('harmonic%i.mp4' % Nparticles, writer=writer)
 plt.show()
-
-
-
-
-
-
-
-
-
-
-
 
