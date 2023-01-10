@@ -4,20 +4,21 @@ from matplotlib import rcParams
 from matplotlib.animation import FuncAnimation, FFMpegWriter
 from numba import njit
 from tqdm import trange
-import copy
-import pdb
+import copy, cProfile, pstats, io
+from pstats import SortKey
+pr = cProfile.Profile()
 rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\OneDrive\\Escritorio\\ffmpeg-2023-01-01-git-62da0b4a74-essentials_build\\bin\\ffmpeg.exe"
 writer = FFMpegWriter(fps=30, metadata=dict(artist='Me'), bitrate=2800)
 
 # Parametros y variables globales:
 
-sqrtN=10
-Ttotal = 3
+sqrtN=20
+Ttotal = 2
 Ttransient = 0
-dt = 1e-3
+dt = 1e-4
 Temperatura= 0.0
-packing = .5
-gammaexpansion = 0#np.log(5)/Ttotal
+packing = .8
+gammaexpansion = np.log(5)/Ttotal
 mu = dt*0.1
 
 
@@ -31,7 +32,7 @@ radiocorte = sigma*1.5 # 2.5sigma era antes
 
 # Parametros activos:
 
-velocitymagnitude = 10
+velocitymagnitude = 30
 D_r = 1
 D_T = 0.1 # DE MOMENTO NO HACE NADA
 
@@ -56,6 +57,10 @@ coefphi = np.sqrt(2*D_r*dt)
 coefpos = np.sqrt(2*D_T*dt)
 sqrtdt = np.sqrt(dt)
 
+# Profiling:
+
+pr.enable()
+
 # Funciones:
 
 @njit
@@ -72,6 +77,11 @@ def distances(particle1, particle2, boxsize): # Could be done using modulus func
     dx, dy = dP
     r = np.linalg.norm(dP)
     return dx, dy, r
+
+@njit
+def arrayequal(p1, p2):
+    boolean = np.array_equal(p1, p2)
+    return boolean
 
 @njit
 def pairwiseforce(particle1, particle2, boxsize, type):
@@ -110,7 +120,7 @@ def force(particle, boxsize, delta, cell_list, type, ncells=Ncells):
             n = int((n0 + delx) % ncells)
             m = int((m0 + dely) % ncells)
             for otherparticle in cell_list[n][m]:
-                if not np.array_equal(particle, otherparticle):
+                if not arrayequal(particle, otherparticle):
                     xforce, yforce = pairwiseforce(particle, otherparticle, boxsize, type)
                     xaccel += xforce
                     yaccel += yforce
@@ -209,6 +219,13 @@ for t in trange(Nsteps + Ntransient):
             k+=1
 
 
+pr.disable()
+s = io.StringIO()
+sortby = SortKey.CUMULATIVE
+ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+ps.print_stats()
+with open('test.txt', 'w+') as f:
+    f.write(s.getvalue())
 
 def animable(i):
     global store_positions, scatter, ax, store_boxsize
@@ -222,7 +239,6 @@ def animable(i):
     scatter.set_offsets(data)
     tiempo_text.set_text("t = %.2f" % tiempo)
     return scatter, tiempo_text, ax
-
 
 fig = plt.figure(figsize=(7,7))
 fig.clf()
