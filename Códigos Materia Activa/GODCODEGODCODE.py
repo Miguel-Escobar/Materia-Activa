@@ -5,18 +5,19 @@ from matplotlib.animation import FuncAnimation, FFMpegWriter
 from numba import njit
 from tqdm import trange
 import copy
-rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\Desktop\\ffmpeg\\bin\\ffmpeg.exe"
-writer = FFMpegWriter(fps=60, metadata=dict(artist='Me'), bitrate=2800)
+import pdb
+rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\OneDrive\\Escritorio\\ffmpeg-2023-01-01-git-62da0b4a74-essentials_build\\bin\\ffmpeg.exe"
+writer = FFMpegWriter(fps=30, metadata=dict(artist='Me'), bitrate=2800)
 
 # Parametros y variables globales:
 
-sqrtN=50
+sqrtN=10
 Ttotal = 3
 Ttransient = 0
-dt = 1e-4
+dt = 1e-3
 Temperatura= 0.0
 packing = .5
-timesexpansion = 1
+gammaexpansion = 2
 mu = dt*0.1
 
 
@@ -26,13 +27,13 @@ tipo = int(input("Press 1 for Lennard Jones potential, 2 for Harmonic potential:
 sigma=1
 masa=1
 epsilon=1
-radiocorte = sigma  # 2.5sigma era antes
+radiocorte = sigma*1.5 # 2.5sigma era antes
 
 # Parametros activos:
 
 velocitymagnitude = 10
-D_r = 0.1
-D_T = 0.0
+D_r = 1
+D_T = 0.1 # DE MOMENTO NO HACE NADA
 
 # Parámetro animación:
 
@@ -50,7 +51,7 @@ if tipo == 2:
     boxsize = sqrtN*(sigma)*np.sqrt(np.pi/2*packing)
     Ncells = max(int(boxsize/sigma), 1)
 delta = boxsize/Ncells
-ratio = timesexpansion**(1/Nsteps)
+ratio = gammaexpansion**(1/Nsteps)
 coefphi = np.sqrt(2*D_r*dt)
 coefpos = np.sqrt(2*D_T*dt)
 sqrtdt = np.sqrt(dt)
@@ -64,16 +65,21 @@ def distances(particle1, particle2, boxsize): # Could be done using modulus func
     are represented by 1D arrays with their position
     vector coordinates. 
     """
-    dx, dy = particle1 - particle2
-    if (dx>0.5*boxsize):
-        dx=dx-boxsize
-    if (dx<-0.5*boxsize):
-        dx=dx+boxsize
-    if (dy>0.5*boxsize):
-        dy=dy-boxsize
-    if (dy<-0.5*boxsize):
-        dy=dy+boxsize
-    r = np.sqrt(dx**2 + dy**2)
+    # dx, dy = particle1 - particle2
+    # if (dx>0.5*boxsize):
+    #     dx=dx-boxsize
+    # if (dx<-0.5*boxsize):
+    #     dx=dx+boxsize
+    # if (dy>0.5*boxsize):
+    #     dy=dy-boxsize
+    # if (dy<-0.5*boxsize):
+    #     dy=dy+boxsize
+    # r = np.sqrt(dx**2 + dy**2)
+    dP = particle1 - particle2 + .5*boxsize
+    dP = dP % boxsize
+    dP -= .5*boxsize
+    dx, dy = dP
+    r = np.linalg.norm(dP)
     return dx, dy, r
 
 @njit
@@ -133,9 +139,10 @@ def fill_cell_list(particles, delta, emptylist):
     slow.
     """
     for particle in particles:
-        n = int(particle[0]//delta)
-        m = int(particle[1]//delta)
-        emptylist[n][m].append(particle)
+        nn = int(particle[0]//delta)
+        mm = int(particle[1]//delta)
+        emptylist[nn][mm].append(particle)
+
     return emptylist
 
 
@@ -164,41 +171,46 @@ def update_positions(oldparticles, forcearray, phi, velocitymagnitude, dt):
     return particles
 
 @njit
-def boundary_and_expand(weirdparticles, boxsize, ratio):
+def boundary_and_expand(weirdparticles, boxsize, ratio, Ncells):
     particles = weirdparticles % boxsize
     particles *= ratio
     boxsize *= ratio
-    return particles, boxsize
+    if tipo == 1:
+        Newcells = max(int(boxsize/radiocorte), 1)
+    if tipo == 2:
+        Newcells = max(int(boxsize/sigma), 1)
+    delta = boxsize/Newcells
+    return particles, boxsize, Newcells, delta
 
 
-
-tocopy = []
-for i in range(Ncells):
-    tocopy.append([])
-    for j in range(Ncells):
-        tocopy[i].append([])
+def create_cell_list(Ncells):
+    tocopy = []
+    for i in range(Ncells):
+        tocopy.append([])
+        for j in range(Ncells):
+            tocopy[i].append([])
+    return tocopy
 
 
 particles, phi = condicioninicial(Nparticles, Temperatura, masa, boxsize)
-
 store_positions = np.zeros((Nsteps//frameskip, Nparticles, 2))
 store_boxsize = np.zeros((Nsteps//frameskip))
 k=0
+tocopy = create_cell_list(Ncells)
 
 for t in trange(Nsteps + Ntransient):
-    cell_list = copy.deepcopy(tocopy)
+    if gammaexpansion == 1:
+        cell_list = copy.deepcopy(tocopy)
+    else:
+        cell_list = create_cell_list(Ncells)
     cell_list = fill_cell_list(particles, delta, cell_list)
     forces = np.zeros((Nparticles, 2))
     for i in range(Nparticles):
         particle = particles[i]
-        forces[i] = force(particle, boxsize, delta, cell_list, tipo)
+        forces[i] = force(particle, boxsize, delta, cell_list, tipo, ncells=Ncells)
     phi = update_phi(phi)
     weirdparticles = update_positions(particles, forces, phi, velocitymagnitude, dt)
-    particles, boxsize = boundary_and_expand(weirdparticles, boxsize, ratio)
-    if tipo == 1:
-        Ncells = int(boxsize/radiocorte)
-    if tipo == 2:
-        Ncells = int(boxsize/sigma)
+    particles, boxsize, Ncells, delta = boundary_and_expand(weirdparticles, boxsize, ratio, Ncells)
     if t >= Ntransient:
         if t%frameskip == 0:
             store_positions[k] = particles.copy()
@@ -209,8 +221,11 @@ for t in trange(Nsteps + Ntransient):
 
 def animable(i):
     global store_positions, scatter, ax, store_boxsize
-    ax.set_xlim((0, store_boxsize[i]))
-    ax.set_ylim((0, store_boxsize[i]))
+    if gammaexpansion != 1:
+        ax.set_xlim((0, store_boxsize[i]))
+        ax.set_ylim((0, store_boxsize[i]))
+        sqrtS = int(300/(sqrtN*ratio**(i*frameskip)))
+        scatter.set_sizes(sqrtS*sqrtS*np.ones(Nparticles))
     tiempo = dt*i*frameskip
     data = store_positions[i]
     scatter.set_offsets(data)
@@ -220,13 +235,15 @@ def animable(i):
 
 fig = plt.figure(figsize=(7,7))
 fig.clf()
-ax = plt.axes(xlim=(0,boxsize),ylim=(0,boxsize))
-scatter = ax.scatter(store_positions[0,0], store_positions[0,1], s=int(300/sqrtN)*int(300/sqrtN))
+ax = plt.axes(xlim=(0,store_boxsize[0]),ylim=(0,store_boxsize[0]))
+marksize = int(300/sqrtN)*int(300/sqrtN)
+scatter = ax.scatter(store_positions[0,:,0], store_positions[0,:,1], s=marksize)
 tiempo_text = ax.text(0.02, 0.90, '', transform=ax.transAxes)
-anim = FuncAnimation(fig, animable, frames=int(Nsteps/frameskip), interval=33)
-if tipo == 1:
-    anim.save('lennardjones%i.mp4' % Nparticles, writer=writer)
-if tipo == 2:
-    anim.save('harmonic%i.mp4' % Nparticles, writer=writer)
+anim = FuncAnimation(fig, animable, frames=int(Nsteps/frameskip), interval=10)
+if input("save? (y/n)") == "y":
+    if tipo == 1:
+        anim.save('lennardjones%i.mp4' % Nparticles, writer=writer)
+    if tipo == 2:
+        anim.save('harmonic%i.mp4' % Nparticles, writer=writer)
 plt.show()
 

@@ -10,12 +10,12 @@ writer = FFMpegWriter(fps=60, metadata=dict(artist='Me'), bitrate=1800)
 
 # Parametros y variables globales:
 
-sqrtN=23
+sqrtN=20
 Ttotal = 2
 Ttransient = 0
 dt = 1e-3
 Temperatura= 0.0
-packing = .6
+packing = .4
 timesexpansion = 1
 
 
@@ -29,7 +29,7 @@ radiocorte = sigma  # 2.5sigma era antes
 
 # Parametros activos:
 
-velocitymagnitude = 10
+velocitymagnitude = 20
 D_r = 0.0
 D_T = 0.0
 
@@ -125,7 +125,7 @@ def update_velocities(oldvelocities, oldphi, accelarray, dt):
     no viscocity) and updates the angles of the persistance velocity with random noise.
     """
     phi = oldphi + np.random.normal(size=Nparticles)*coefphi
-    velocities = oldvelocities + accelarray*dt 
+    velocities = oldvelocities*.2 + accelarray*dt  # OJO CAMBIÉ ESTO CON VISCOCIDAD
     return phi, velocities
 
 def fill_cell_list(particles, delta, emptylist):
