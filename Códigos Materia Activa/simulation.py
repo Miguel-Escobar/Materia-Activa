@@ -7,7 +7,8 @@ from tqdm import trange
 import copy, cProfile, pstats, io
 from pstats import SortKey
 pr = cProfile.Profile()
-rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\OneDrive\\Escritorio\\ffmpeg-2023-01-01-git-62da0b4a74-essentials_build\\bin\\ffmpeg.exe"
+rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\Desktop\\ffmpeg\\bin\\ffmpeg.exe"
+#rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\OneDrive\\Escritorio\\ffmpeg-2023-01-01-git-62da0b4a74-essentials_build\\bin\\ffmpeg.exe"
 writer = FFMpegWriter(fps=30, metadata=dict(artist='Me'), bitrate=2800)
 
 # Parametros y variables globales:
@@ -18,7 +19,7 @@ Ttransient = 0
 dt = 1e-3
 Temperatura= 0.0
 packing = .9
-gammaexpansion = np.log(5)/Ttotal
+gammaexpansion = np.log(2)/Ttotal
 mu = dt*0.1
 
 
@@ -79,8 +80,12 @@ def distances(particle1, particle2, boxsize): # Could be done using modulus func
     return dx, dy, r
 
 @njit
-def arrayequal(p1, p2):
-    boolean = np.array_equal(p1, p2)
+def arrayequal(particle1, particle2):
+    """
+    JIT version of np.array_equal. Returns True when p1 and p2
+    are equal element-wise, meaning they are the same particle.
+    """
+    boolean = np.array_equal(particle1, particle2)
     return boolean
 
 @njit
@@ -163,16 +168,31 @@ def condicioninicial(Nparticles, temperatura, masa, boxsize):
 
 @njit
 def persistancevelocity(phi, velocitymagnitude):
+    """
+    Calculates the velocity vector of all particles, which is determined 
+    by the angles phi. This corresponds only to the velocity resulting from
+    self propulsion. 
+    """
     v = velocitymagnitude*np.column_stack((np.cos(phi), np.sin(phi)))
     return v
 
 @njit
 def update_positions(oldparticles, forcearray, phi, velocitymagnitude, dt):
+    """
+    Performs a numerical integration of the equations of motion based on previous
+    positions, an array with the force felt by each particle and the angles of the
+    self propulsion velocity.
+    """
     particles = oldparticles + mu*forcearray + persistancevelocity(phi, velocitymagnitude)*dt
     return particles
 
 @njit
-def boundary_and_expand(weirdparticles, boxsize, ratio, Ncells):
+def boundary_and_expand(weirdparticles, boxsize, ratio):
+    """
+    Applies the periodic boundary conditions for particles (named weirdparticles
+    because they can be outside the box). Then, expands or contracts the space
+    based on ratio.
+    """
     particles = weirdparticles % boxsize
     particles *= ratio
     boxsize *= ratio
@@ -185,6 +205,9 @@ def boundary_and_expand(weirdparticles, boxsize, ratio, Ncells):
 
 
 def create_cell_list(Ncells):
+    """
+    Creates a linked cell list to be filled later.
+    """
     tocopy = []
     for i in range(Ncells):
         tocopy.append([])
@@ -200,10 +223,10 @@ k=0
 tocopy = create_cell_list(Ncells)
 
 for t in trange(Nsteps + Ntransient):
-    if gammaexpansion == 0:
+    if gammaexpansion == 0: # Could be faster this way.
         cell_list = copy.deepcopy(tocopy)
     else:
-        cell_list = create_cell_list(Ncells)
+        cell_list = create_cell_list(Ncells) # Could be optimized so it creates a cell_list each time Ncells changes.
     cell_list = fill_cell_list(particles, delta, cell_list)
     forces = np.zeros((Nparticles, 2))
     for i in range(Nparticles):
@@ -211,7 +234,7 @@ for t in trange(Nsteps + Ntransient):
         forces[i] = force(particle, boxsize, delta, cell_list, tipo, ncells=Ncells)
     phi = update_phi(phi)
     weirdparticles = update_positions(particles, forces, phi, velocitymagnitude, dt)
-    particles, boxsize, Ncells, delta = boundary_and_expand(weirdparticles, boxsize, ratio, Ncells)
+    particles, boxsize, Ncells, delta = boundary_and_expand(weirdparticles, boxsize, ratio)
     if t >= Ntransient:
         if t%frameskip == 0:
             store_positions[k] = particles.copy()
@@ -227,30 +250,32 @@ ps.print_stats()
 with open('test.txt', 'w+') as f:
     f.write(s.getvalue())
 
-def animable(i):
-    global store_positions, scatter, ax, store_boxsize
-    if gammaexpansion != 0:
-        ax.set_xlim((0, store_boxsize[i]))
-        ax.set_ylim((0, store_boxsize[i]))
-        sqrtS = int(300/(sqrtN*ratio**(i*frameskip)))
-        scatter.set_sizes(sqrtS*sqrtS*np.ones(Nparticles))
-    tiempo = dt*i*frameskip
-    data = store_positions[i]
-    scatter.set_offsets(data)
-    tiempo_text.set_text("t = %.2f" % tiempo)
-    return scatter, tiempo_text, ax
 
-fig = plt.figure(figsize=(7,7))
-fig.clf()
-ax = plt.axes(xlim=(0,store_boxsize[0]),ylim=(0,store_boxsize[0]))
-marksize = int(300/sqrtN)*int(300/sqrtN)
-scatter = ax.scatter(store_positions[0,:,0], store_positions[0,:,1], s=marksize)
-tiempo_text = ax.text(0.02, 0.90, '', transform=ax.transAxes)
-anim = FuncAnimation(fig, animable, frames=int(Nsteps/frameskip), interval=10)
-if input("save? (y/n) ") == "y":
-    if tipo == 1:
-        anim.save('lennardjones%i.mp4' % Nparticles, writer=writer)
-    if tipo == 2:
-        anim.save('harmonic%i.mp4' % Nparticles, writer=writer)
-plt.show()
+if input("Animate? (y/n) ") == "y":
+    def animable(i):
+        global store_positions, scatter, ax, store_boxsize
+        if gammaexpansion != 0:
+            ax.set_xlim((0, store_boxsize[i]))
+            ax.set_ylim((0, store_boxsize[i]))
+            sqrtS = int(300/(sqrtN*ratio**(i*frameskip)))
+            scatter.set_sizes(sqrtS*sqrtS*np.ones(Nparticles))
+        tiempo = dt*i*frameskip
+        data = store_positions[i]
+        scatter.set_offsets(data)
+        tiempo_text.set_text("t = %.2f" % tiempo)
+        return scatter, tiempo_text, ax
+
+    fig = plt.figure(figsize=(7,7))
+    fig.clf()
+    ax = plt.axes(xlim=(0,store_boxsize[0]),ylim=(0,store_boxsize[0]))
+    marksize = int(300/sqrtN)*int(300/sqrtN)
+    scatter = ax.scatter(store_positions[0,:,0], store_positions[0,:,1], s=marksize)
+    tiempo_text = ax.text(0.02, 0.90, '', transform=ax.transAxes)
+    anim = FuncAnimation(fig, animable, frames=int(Nsteps/frameskip), interval=10)
+    if input("Save animation? (y/n) ") == "y":
+        if tipo == 1:
+            anim.save('lennardjones%i.mp4' % Nparticles, writer=writer)
+        if tipo == 2:
+            anim.save('harmonic%i.mp4' % Nparticles, writer=writer)
+    plt.show()
 

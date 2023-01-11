@@ -7,7 +7,8 @@ from tqdm import trange
 import copy, cProfile, pstats, io
 from pstats import SortKey
 pr = cProfile.Profile()
-rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\OneDrive\\Escritorio\\ffmpeg-2023-01-01-git-62da0b4a74-essentials_build\\bin\\ffmpeg.exe"
+rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\Desktop\\ffmpeg\\bin\\ffmpeg.exe"
+#rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\OneDrive\\Escritorio\\ffmpeg-2023-01-01-git-62da0b4a74-essentials_build\\bin\\ffmpeg.exe"
 writer = FFMpegWriter(fps=30, metadata=dict(artist='Me'), bitrate=2800)
 
 # Parametros y variables globales:
