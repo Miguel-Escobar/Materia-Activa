@@ -13,11 +13,11 @@ writer = FFMpegWriter(fps=30, metadata=dict(artist='Me'), bitrate=2800)
 # Parametros y variables globales:
 
 sqrtN=20
-Ttotal = 3
+Ttotal = 1
 Ttransient = 0
-dt = 1e-3
+dt = 1e-4
 Temperatura= 0.0
-packing = .9
+packing = .8
 gammaexpansion = np.log(5)/Ttotal
 mu = dt*0.1
 
@@ -32,7 +32,7 @@ radiocorte = sigma*1.5 # 2.5sigma era antes
 
 # Parametros activos:
 
-velocitymagnitude = 10
+velocitymagnitude = 30
 D_r = 1
 D_T = 0.1 # DE MOMENTO NO HACE NADA
 
@@ -56,6 +56,7 @@ ratio = 1 + gammaexpansion*dt
 coefphi = np.sqrt(2*D_r*dt)
 coefpos = np.sqrt(2*D_T*dt)
 sqrtdt = np.sqrt(dt)
+impossiblevalue = 1000*boxsize
 
 # Profiling:
 
@@ -103,7 +104,8 @@ def pairwiseforce(particle1, particle2, boxsize, type):
     yforce = coef*dy
     return xforce, yforce
 
-def force(particle, boxsize, delta, cell_list, type, ncells=Ncells):
+@njit
+def force(particle, boxsize, delta, cell_array, type, ncells=Ncells):
     """
     Computes the force felt by a particle subject
     to a pairwise interaction potential. Particles is a 2
@@ -119,8 +121,8 @@ def force(particle, boxsize, delta, cell_list, type, ncells=Ncells):
         for dely in (-1, 0 , 1):
             n = int((n0 + delx) % ncells)
             m = int((m0 + dely) % ncells)
-            for otherparticle in cell_list[n][m]:
-                if not arrayequal(particle, otherparticle):
+            for otherparticle in cell_array[n,m,:,:]:
+                if otherparticle[0] != impossiblevalue and not arrayequal(particle, otherparticle):
                     xforce, yforce = pairwiseforce(particle, otherparticle, boxsize, type)
                     xaccel += xforce
                     yaccel += yforce
@@ -133,17 +135,18 @@ def update_phi(oldphi):
     phi = oldphi + np.random.normal(size=Nparticles)*coefphi
     return phi
 
+@njit
 def fill_cell_list(particles, delta, emptylist):
     """
-    Fills a 2D cell list of Ncells x Ncells, where each cell
-    contains particles that lie within it. Could be very
-    slow.
+    Fills an array with shape (Ncells, Ncells, Nparticles, 2),
+    where the first 2 indices denote a certain cell, and then the particle can
+    be stored in it.
     """
-    for particle in particles:
+    for i in range(Nparticles):
+        particle = particles[i]
         nn = int(particle[0]//delta)
         mm = int(particle[1]//delta)
-        emptylist[nn][mm].append(particle)
-
+        emptylist[nn,mm, i] = particle
     return emptylist
 
 
@@ -183,13 +186,9 @@ def boundary_and_expand(weirdparticles, boxsize, ratio, Ncells):
     delta = boxsize/Newcells
     return particles, boxsize, Newcells, delta
 
-
+@njit
 def create_cell_list(Ncells):
-    tocopy = []
-    for i in range(Ncells):
-        tocopy.append([])
-        for j in range(Ncells):
-            tocopy[i].append([])
+    tocopy = np.zeros((Ncells, Ncells, Nparticles, 2)) + impossiblevalue
     return tocopy
 
 
@@ -247,10 +246,9 @@ marksize = int(300/sqrtN)*int(300/sqrtN)
 scatter = ax.scatter(store_positions[0,:,0], store_positions[0,:,1], s=marksize)
 tiempo_text = ax.text(0.02, 0.90, '', transform=ax.transAxes)
 anim = FuncAnimation(fig, animable, frames=int(Nsteps/frameskip), interval=10)
-if input("save? (y/n) ") == "y":
+if input("save? (y/n)") == "y":
     if tipo == 1:
         anim.save('lennardjones%i.mp4' % Nparticles, writer=writer)
     if tipo == 2:
         anim.save('harmonic%i.mp4' % Nparticles, writer=writer)
 plt.show()
-
