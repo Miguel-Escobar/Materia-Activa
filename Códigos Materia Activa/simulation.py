@@ -60,7 +60,7 @@ sqrtdt = np.sqrt(dt)
 
 # Profiling:
 
-pr.enable()
+# pr.enable()
 
 # Funciones:
 
@@ -242,13 +242,13 @@ for t in trange(Nsteps + Ntransient):
             k+=1
 
 
-pr.disable()
-s = io.StringIO()
-sortby = SortKey.CUMULATIVE
-ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-ps.print_stats()
-with open('test.txt', 'w+') as f:
-    f.write(s.getvalue())
+# pr.disable()
+# s = io.StringIO()
+# sortby = SortKey.CUMULATIVE
+# ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+# ps.print_stats()
+# with open('test.txt', 'w+') as f:
+#     f.write(s.getvalue())
 
 if input("Animate? (y/n) ") == "y":
     def animable(i):
@@ -279,5 +279,5 @@ if input("Animate? (y/n) ") == "y":
     plt.show()
 
 if input("Save data as .npz? (y/n) ") == "y":
-    parameters = np.array([sigma, epsilon, radiocorte, packing, mu, D_r, D_T, gammaexpansion])
+    parameters = np.array([sigma, epsilon, radiocorte, packing, mu, D_r, D_T, gammaexpansion, dt])
     np.savez_compressed("%iparticles%.1fgamma%ivelocity%itime" % (Nparticles, gammaexpansion, velocitymagnitude, Ttotal), positions=store_positions, boxsizes=store_boxsize, parameters=parameters)
