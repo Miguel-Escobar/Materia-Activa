@@ -13,10 +13,10 @@ writer = FFMpegWriter(fps=30, metadata=dict(artist='Me'), bitrate=2800)
 
 # Parametros y variables globales:
 
-sqrtN=20
-Ttotal = 3
-Ttransient = 0
-dt = 1e-3
+sqrtN=32
+Ttotal = 5
+Ttransient = 0 # Doesnt quite work
+dt = 1e-4
 Temperatura= 0.0
 packing = .9
 gammaexpansion = np.log(2)/Ttotal
@@ -33,13 +33,13 @@ radiocorte = sigma*1.5 # 2.5sigma era antes
 
 # Parametros activos:
 
-velocitymagnitude = 10
+velocitymagnitude = 50
 D_r = 1
 D_T = 0.1 # DE MOMENTO NO HACE NADA
 
 # Parámetro animación:
 
-frameskip = 10
+frameskip = 1 # Stores data every 10 frames.
 
 # Funciones de otras cosas:
 
@@ -236,7 +236,7 @@ for t in trange(Nsteps + Ntransient):
     weirdparticles = update_positions(particles, forces, phi, velocitymagnitude, dt)
     particles, boxsize, Ncells, delta = boundary_and_expand(weirdparticles, boxsize, ratio)
     if t >= Ntransient:
-        if t%frameskip == 0:
+        if t % frameskip == 0:
             store_positions[k] = particles.copy()
             store_boxsize[k] = boxsize
             k+=1
@@ -249,7 +249,6 @@ ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
 ps.print_stats()
 with open('test.txt', 'w+') as f:
     f.write(s.getvalue())
-
 
 if input("Animate? (y/n) ") == "y":
     def animable(i):
@@ -279,3 +278,6 @@ if input("Animate? (y/n) ") == "y":
             anim.save('harmonic%i.mp4' % Nparticles, writer=writer)
     plt.show()
 
+if input("Save data as .npz? (y/n) ") == "y":
+    parameters = np.array([sigma, epsilon, radiocorte, packing, mu, D_r, D_T, gammaexpansion])
+    np.savez_compressed("%iparticles%.1fgamma%ivelocity%itime" % (Nparticles, gammaexpansion, velocitymagnitude, Ttotal), positions=store_positions, boxsizes=store_boxsize, parameters=parameters)
