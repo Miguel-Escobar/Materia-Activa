@@ -13,7 +13,7 @@ writer = FFMpegWriter(fps=30, metadata=dict(artist='Me'), bitrate=2800)
 
 # Parametros y variables globales:
 
-sqrtN=32
+sqrtN=20
 Ttotal = 5
 Ttransient = 0 # Doesnt quite work
 dt = 1e-4
