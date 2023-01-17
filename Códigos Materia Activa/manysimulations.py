@@ -6,7 +6,7 @@ from numba import njit
 from tqdm import trange
 import copy, cProfile, pstats, io
 from pstats import SortKey
-pr = cProfile.Profile()
+pr = cProfile.Profile() # Descomentar lineas para utilizar.
 
 
 # Parametros y variables globales:
@@ -27,7 +27,7 @@ tipo = int(input("Press 1 for Lennard Jones potential, 2 for Harmonic potential:
 sigma=1
 masa=1
 epsilon=1
-radiocorte = sigma*2.5 # 2.5sigma era antes
+radiocorte = sigma*2**(1/6) # 2.5sigma era antes
 
 # Parametros activos:
 
@@ -97,7 +97,7 @@ def pairwiseforce(particle1, particle2, boxsize, type):
     coef = 0
     if type == 1:
         if r < radiocorte:
-            coef = 48*epsilon*((sigma**12)/(r**14))
+            coef = 4*epsilon*(12*(sigma**12)/(r**14) - (sigma**6)/(r**8))
     if type == 2:
         if r < sigma:
             coef = (epsilon/sigma)*(1/r-1/sigma)
@@ -242,7 +242,8 @@ for M in range(10):
                 store_positions[k] = particles.copy()
                 store_boxsize[k] = boxsize
                 k+=1
-
+    parameters = np.array([sigma, epsilon, radiocorte, sqrtN, packing, mu, D_r, D_T, gammaexpansion, tipo, frameskip, dt])
+    np.savez_compressed("%iparticles%ivelocity%itime%i" % (Nparticles, velocitymagnitude, Ttotal, M), positions=store_positions, boxsizes=store_boxsize, parameters=parameters)
 
 # pr.disable()
 # s = io.StringIO()
@@ -252,33 +253,4 @@ for M in range(10):
 # with open('test.txt', 'w+') as f:
 #     f.write(s.getvalue())
 
-# if input("Animate? (y/n) ") == "y":
-#     def animable(i):
-#         global store_positions, scatter, ax, store_boxsize
-#         if gammaexpansion != 0:
-#             ax.set_xlim((0, store_boxsize[i]))
-#             ax.set_ylim((0, store_boxsize[i]))
-#             sqrtS = int(300/(sqrtN*ratio**(i*frameskip)))
-#             scatter.set_sizes(sqrtS*sqrtS*np.ones(Nparticles))
-#         tiempo = dt*i*frameskip
-#         data = store_positions[i]
-#         scatter.set_offsets(data)
-#         tiempo_text.set_text("t = %.2f" % tiempo)
-#         return scatter, tiempo_text, ax
-
-#     fig = plt.figure(figsize=(7,7))
-#     fig.clf()
-#     ax = plt.axes(xlim=(0,store_boxsize[0]),ylim=(0,store_boxsize[0]))
-#     marksize = int(300/sqrtN)*int(300/sqrtN)
-#     scatter = ax.scatter(store_positions[0,:,0], store_positions[0,:,1], s=marksize)
-#     tiempo_text = ax.text(0.02, 0.90, '', transform=ax.transAxes)
-#     anim = FuncAnimation(fig, animable, frames=int(Nsteps/frameskip), interval=10)
-#     if input("Save animation? (y/n) ") == "y":
-#         if tipo == 1:
-#             anim.save('lennardjones%i.mp4' % Nparticles, writer=writer)
-#         if tipo == 2:
-#             anim.save('harmonic%i.mp4' % Nparticles, writer=writer)
-#     plt.show()
-
-    parameters = np.array([sigma, epsilon, radiocorte, sqrtN, packing, mu, D_r, D_T, gammaexpansion, tipo, frameskip, dt])
-    np.savez_compressed("%iparticles%ivelocity%itime%i" % (Nparticles, velocitymagnitude, Ttotal, M), positions=store_positions, boxsizes=store_boxsize, parameters=parameters)
+    

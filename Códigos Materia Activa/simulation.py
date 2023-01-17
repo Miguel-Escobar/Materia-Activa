@@ -14,8 +14,8 @@ writer = FFMpegWriter(fps=30, metadata=dict(artist='Me'), bitrate=2800)
 # Parametros y variables globales:
 
 sqrtN=10
-Ttotal = 3
-Ttransient = 2 # Doesnt quite work
+Ttotal = 5
+Ttransient = 0 # Doesnt quite work
 dt = 1e-3
 Temperatura= 0.0
 packing = .5
@@ -29,7 +29,7 @@ tipo = int(input("Press 1 for Lennard Jones potential, 2 for Harmonic potential:
 sigma=1
 masa=1
 epsilon=1
-radiocorte = sigma*2.5 # 2.5sigma era antes
+radiocorte = sigma*2**(1/6) # 2.5sigma era antes
 
 # Parametros activos:
 
@@ -99,7 +99,7 @@ def pairwiseforce(particle1, particle2, boxsize, type):
     coef = 0
     if type == 1:
         if r < radiocorte:
-            coef = 48*epsilon*((sigma**12)/(r**14))
+            coef = 4*epsilon*(12*(sigma**12)/(r**14) - (sigma**6)/(r**8))
     if type == 2:
         if r < sigma:
             coef = (epsilon/sigma)*(1/r-1/sigma)
