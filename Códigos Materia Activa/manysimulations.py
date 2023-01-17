@@ -7,15 +7,13 @@ from tqdm import trange
 import copy, cProfile, pstats, io
 from pstats import SortKey
 pr = cProfile.Profile()
-rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\Desktop\\ffmpeg\\bin\\ffmpeg.exe"
-#rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\OneDrive\\Escritorio\\ffmpeg-2023-01-01-git-62da0b4a74-essentials_build\\bin\\ffmpeg.exe"
-writer = FFMpegWriter(fps=30, metadata=dict(artist='Me'), bitrate=2800)
+
 
 # Parametros y variables globales:
 
-sqrtN=10
+sqrtN=20
 Ttotal = 3
-Ttransient = 2 # Doesnt quite work
+Ttransient = 2 
 dt = 1e-3
 Temperatura= 0.0
 packing = .5
@@ -39,7 +37,7 @@ D_T = 0.1 # DE MOMENTO NO HACE NADA
 
 # Parámetro animación:
 
-frameskip = 100 # Stores data every 10 frames.
+frameskip = 10 # Stores data every 10 frames.
 
 # Funciones de otras cosas:
 
@@ -215,35 +213,35 @@ def create_cell_list(Ncells):
             tocopy[i].append([])
     return tocopy
 
+for M in range(10):
+    particles, phi = condicioninicial(Nparticles, Temperatura, masa, boxsize)
+    store_positions = np.zeros((Nsteps//frameskip, Nparticles, 2))
+    store_boxsize = np.zeros((Nsteps//frameskip))
+    k=0
+    tocopy = create_cell_list(Ncells)
+    expansionratio = 1
+    for t in trange(Nsteps + Ntransient):
+        if t == Ntransient:
+            expansionratio = ratio
 
-particles, phi = condicioninicial(Nparticles, Temperatura, masa, boxsize)
-store_positions = np.zeros((Nsteps//frameskip, Nparticles, 2))
-store_boxsize = np.zeros((Nsteps//frameskip))
-k=0
-tocopy = create_cell_list(Ncells)
-expansionratio = 1
-for t in trange(Nsteps + Ntransient):
-    if t == Ntransient:
-        expansionratio = ratio
+        if expansionratio == 1: # Could be faster this way.
+            cell_list = copy.deepcopy(tocopy)
+        else:
+            cell_list = create_cell_list(Ncells) # Could be optimized so it creates a cell_list each time Ncells changes.
+        cell_list = fill_cell_list(particles, delta, cell_list)
+        forces = np.zeros((Nparticles, 2))
+        for i in range(Nparticles):
+            particle = particles[i]
+            forces[i] = force(particle, boxsize, delta, cell_list, tipo, ncells=Ncells)
+        phi = update_phi(phi)
+        weirdparticles = update_positions(particles, forces, phi, velocitymagnitude, dt)
+        particles, boxsize, Ncells, delta = boundary_and_expand(weirdparticles, boxsize, ratio)
 
-    if expansionratio == 1: # Could be faster this way.
-        cell_list = copy.deepcopy(tocopy)
-    else:
-        cell_list = create_cell_list(Ncells) # Could be optimized so it creates a cell_list each time Ncells changes.
-    cell_list = fill_cell_list(particles, delta, cell_list)
-    forces = np.zeros((Nparticles, 2))
-    for i in range(Nparticles):
-        particle = particles[i]
-        forces[i] = force(particle, boxsize, delta, cell_list, tipo, ncells=Ncells)
-    phi = update_phi(phi)
-    weirdparticles = update_positions(particles, forces, phi, velocitymagnitude, dt)
-    particles, boxsize, Ncells, delta = boundary_and_expand(weirdparticles, boxsize, ratio)
-
-    if t >= Ntransient:
-        if t % frameskip == 0:
-            store_positions[k] = particles.copy()
-            store_boxsize[k] = boxsize
-            k+=1
+        if t >= Ntransient:
+            if t % frameskip == 0:
+                store_positions[k] = particles.copy()
+                store_boxsize[k] = boxsize
+                k+=1
 
 
 # pr.disable()
@@ -254,34 +252,33 @@ for t in trange(Nsteps + Ntransient):
 # with open('test.txt', 'w+') as f:
 #     f.write(s.getvalue())
 
-if input("Animate? (y/n) ") == "y":
-    def animable(i):
-        global store_positions, scatter, ax, store_boxsize
-        if gammaexpansion != 0:
-            ax.set_xlim((0, store_boxsize[i]))
-            ax.set_ylim((0, store_boxsize[i]))
-            sqrtS = int(300/(sqrtN*ratio**(i*frameskip)))
-            scatter.set_sizes(sqrtS*sqrtS*np.ones(Nparticles))
-        tiempo = dt*i*frameskip
-        data = store_positions[i]
-        scatter.set_offsets(data)
-        tiempo_text.set_text("t = %.2f" % tiempo)
-        return scatter, tiempo_text, ax
+# if input("Animate? (y/n) ") == "y":
+#     def animable(i):
+#         global store_positions, scatter, ax, store_boxsize
+#         if gammaexpansion != 0:
+#             ax.set_xlim((0, store_boxsize[i]))
+#             ax.set_ylim((0, store_boxsize[i]))
+#             sqrtS = int(300/(sqrtN*ratio**(i*frameskip)))
+#             scatter.set_sizes(sqrtS*sqrtS*np.ones(Nparticles))
+#         tiempo = dt*i*frameskip
+#         data = store_positions[i]
+#         scatter.set_offsets(data)
+#         tiempo_text.set_text("t = %.2f" % tiempo)
+#         return scatter, tiempo_text, ax
 
-    fig = plt.figure(figsize=(7,7))
-    fig.clf()
-    ax = plt.axes(xlim=(0,store_boxsize[0]),ylim=(0,store_boxsize[0]))
-    marksize = int(300/sqrtN)*int(300/sqrtN)
-    scatter = ax.scatter(store_positions[0,:,0], store_positions[0,:,1], s=marksize)
-    tiempo_text = ax.text(0.02, 0.90, '', transform=ax.transAxes)
-    anim = FuncAnimation(fig, animable, frames=int(Nsteps/frameskip), interval=10)
-    if input("Save animation? (y/n) ") == "y":
-        if tipo == 1:
-            anim.save('lennardjones%i.mp4' % Nparticles, writer=writer)
-        if tipo == 2:
-            anim.save('harmonic%i.mp4' % Nparticles, writer=writer)
-    plt.show()
+#     fig = plt.figure(figsize=(7,7))
+#     fig.clf()
+#     ax = plt.axes(xlim=(0,store_boxsize[0]),ylim=(0,store_boxsize[0]))
+#     marksize = int(300/sqrtN)*int(300/sqrtN)
+#     scatter = ax.scatter(store_positions[0,:,0], store_positions[0,:,1], s=marksize)
+#     tiempo_text = ax.text(0.02, 0.90, '', transform=ax.transAxes)
+#     anim = FuncAnimation(fig, animable, frames=int(Nsteps/frameskip), interval=10)
+#     if input("Save animation? (y/n) ") == "y":
+#         if tipo == 1:
+#             anim.save('lennardjones%i.mp4' % Nparticles, writer=writer)
+#         if tipo == 2:
+#             anim.save('harmonic%i.mp4' % Nparticles, writer=writer)
+#     plt.show()
 
-if input("Save data as .npz? (y/n) ") == "y":
     parameters = np.array([sigma, epsilon, radiocorte, sqrtN, packing, mu, D_r, D_T, gammaexpansion, tipo, frameskip, dt])
-    np.savez_compressed("%iparticles%.1fgamma%ivelocity%itime" % (Nparticles, gammaexpansion, velocitymagnitude, Ttotal), positions=store_positions, boxsizes=store_boxsize, parameters=parameters)
+    np.savez_compressed("%iparticles%ivelocity%itime%i" % (Nparticles, velocitymagnitude, Ttotal, M), positions=store_positions, boxsizes=store_boxsize, parameters=parameters)
