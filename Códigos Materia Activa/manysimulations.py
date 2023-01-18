@@ -12,27 +12,29 @@ pr = cProfile.Profile() # Descomentar lineas para utilizar.
 # Parametros y variables globales:
 
 sqrtN=20
-Ttotal = 3
-Ttransient = 2 
+Ttotal = 10
+Ttransient = 0 # Doesnt quite work
 dt = 1e-3
 Temperatura= 0.0
-packing = .5
-gammaexpansion = np.log(1)/Ttotal
-mu = dt*0.1
-
+packing = .9
+gammaexpansion = np.log(3)/Ttotal
+mu = 0.1
+peclet = 150
 
 # Parametros de potenciales:
 
-tipo = int(input("Press 1 for Lennard Jones potential, 2 for Harmonic potential: "))
+tipo = int(input("Press 1 for Lennard Jones potential, 2 for Harmonic/Hertzian potential: "))
 sigma=1
 masa=1
 epsilon=1
+epsilonharmonico = 1e4 # Determina la fuerza máxima que puede sentir la partícula al multiplicarlo por mu.
 radiocorte = sigma*2**(1/6) # 2.5sigma era antes
+alpha = 5/2 # 2 para potencial armónico, 5/2 para Hertziano.
 
 # Parametros activos:
 
-velocitymagnitude = 10
-D_r = 1
+velocitymagnitude = 50
+D_r = 3*10/(peclet*sigma)
 D_T = 0.1 # DE MOMENTO NO HACE NADA
 
 # Parámetro animación:
@@ -48,7 +50,7 @@ if tipo == 1:
     boxsize = sqrtN*(sigma/2)*np.sqrt(np.pi/packing)
     Ncells = max(int(boxsize/radiocorte), 1)
 if tipo == 2:
-    boxsize = sqrtN*(sigma)*np.sqrt(np.pi/2*packing)
+    boxsize = sqrtN*(sigma/2)*np.sqrt(np.pi/packing)
     Ncells = max(int(boxsize/sigma), 1)
 delta = boxsize/Ncells
 ratio = 1 + gammaexpansion*dt
@@ -100,7 +102,7 @@ def pairwiseforce(particle1, particle2, boxsize, type):
             coef = 4*epsilon*(12*(sigma**12)/(r**14) - (sigma**6)/(r**8))
     if type == 2:
         if r < sigma:
-            coef = (epsilon/sigma)*(1/r-1/sigma)
+            coef = (epsilonharmonico/(sigma*r))*(1-r/sigma)**(alpha-1)
 
     xforce = coef*dx
     yforce = coef*dy
@@ -181,7 +183,7 @@ def update_positions(oldparticles, forcearray, phi, velocitymagnitude, dt):
     positions, an array with the force felt by each particle and the angles of the
     self propulsion velocity.
     """
-    particles = oldparticles + mu*forcearray + persistancevelocity(phi, velocitymagnitude)*dt
+    particles = oldparticles + mu*forcearray*dt + persistancevelocity(phi, velocitymagnitude)*dt
     return particles
 
 @njit
@@ -213,7 +215,23 @@ def create_cell_list(Ncells):
             tocopy[i].append([])
     return tocopy
 
+
 for M in range(10):
+    Nparticles = sqrtN*sqrtN
+    Nsteps = int(Ttotal/dt)
+    Ntransient = int(Ttransient/dt)
+    if tipo == 1:
+        boxsize = sqrtN*(sigma/2)*np.sqrt(np.pi/packing)
+        Ncells = max(int(boxsize/radiocorte), 1)
+    if tipo == 2:
+        boxsize = sqrtN*(sigma/2)*np.sqrt(np.pi/packing)
+        Ncells = max(int(boxsize/sigma), 1)
+    delta = boxsize/Ncells
+    ratio = 1 + gammaexpansion*dt
+    coefphi = np.sqrt(2*D_r*dt)
+    coefpos = np.sqrt(2*D_T*dt)
+    sqrtdt = np.sqrt(dt)
+
     particles, phi = condicioninicial(Nparticles, Temperatura, masa, boxsize)
     store_positions = np.zeros((Nsteps//frameskip, Nparticles, 2))
     store_boxsize = np.zeros((Nsteps//frameskip))
@@ -235,14 +253,14 @@ for M in range(10):
             forces[i] = force(particle, boxsize, delta, cell_list, tipo, ncells=Ncells)
         phi = update_phi(phi)
         weirdparticles = update_positions(particles, forces, phi, velocitymagnitude, dt)
-        particles, boxsize, Ncells, delta = boundary_and_expand(weirdparticles, boxsize, ratio)
+        particles, boxsize, Ncells, delta = boundary_and_expand(weirdparticles, boxsize, expansionratio)
 
         if t >= Ntransient:
             if t % frameskip == 0:
                 store_positions[k] = particles.copy()
                 store_boxsize[k] = boxsize
                 k+=1
-    parameters = np.array([sigma, epsilon, radiocorte, sqrtN, packing, mu, D_r, D_T, gammaexpansion, tipo, frameskip, dt])
+    parameters = np.array([sigma, epsilon, radiocorte, sqrtN, packing, mu, D_r, D_T, gammaexpansion, peclet, tipo, frameskip, dt])
     np.savez_compressed("%iparticles%ivelocity%itime%i" % (Nparticles, velocitymagnitude, Ttotal, M), positions=store_positions, boxsizes=store_boxsize, parameters=parameters)
 
 # pr.disable()

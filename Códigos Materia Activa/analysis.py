@@ -7,24 +7,26 @@ import networkx as nx
 from tess import Container
 from numba import njit
 from tqdm import trange
-rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\Desktop\\ffmpeg\\bin\\ffmpeg.exe"
-#rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\OneDrive\\Escritorio\\ffmpeg-2023-01-01-git-62da0b4a74-essentials_build\\bin\\ffmpeg.exe"
+import pdb
+#rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\Desktop\\ffmpeg\\bin\\ffmpeg.exe"
+rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\OneDrive\\Escritorio\\ffmpeg-2023-01-01-git-62da0b4a74-essentials_build\\bin\\ffmpeg.exe"
 writer = FFMpegWriter(fps=30, metadata=dict(artist='Me'), bitrate=2800)
 """
 Datos interesantes:
 
 Sistemas sin expansión:
-- Coeficiente de clustering en funcion del tiempo (voronoi o con componentes conexas). Para ambos necesito encontrar un radio crítico.
+- LISTO Coeficiente de clustering en funcion del tiempo (voronoi o con componentes conexas). Para ambos necesito encontrar un radio crítico.
 - Fittear cte*(1-exp(-t/Tau)) donde Tau es tiempo de relajación (llegar a estado estacionario).
-- Tamaño cluster más grande en función del tiempo.
+- LISTO Tamaño cluster más grande en función del tiempo.
 
 Sistemas en expansión:
 - Medir lo mismo que sin expansión para caso de sistema sin termalizar y de sistema termalizado.
 
-
 Para hacer estadística:
 - 400 particulas +- 20 veces?
 - Puedo medir más o menos cada 100 o 10 iteraciones
+
+Identificar qué es lo que pasa cuando explota la simulación. ¿Cutoff a la velocidad de las partículas?
 """
 
 
@@ -70,8 +72,6 @@ def clustering_coefficient(points, boxsize, critical_radius):
 
 
 def get_distance_based_neighbourhood_graph(particles, neighbourDistance, boxsize):
-    # Creates graph whose connected components are the clusters, defined by two particles being within neighbourhood distance
-    #Initialise the graph
     G =  nx.Graph()
     Nparticles = len(particles[:,0])
 
@@ -89,13 +89,13 @@ def max_cluster_size(graph):
     connectedComponentsSize = [len(comp) for comp in nx.connected_components(graph)]
     return np.max(connectedComponentsSize)
 
-def analyze_simulation(positions, boxsizes, critical_radius, measure_interval):
+def clustering_and_maxcluster(positions, boxsizes, critical_radius, measure_interval):
     Nparticles = len(positions[0,:,0])
     sample_number = int(len(positions[:,0,0])/measure_interval)
     clustering_coefficients = np.zeros(sample_number)
     max_cluster_ratios = np.zeros(sample_number)
     for i in trange(sample_number):
-        neighbourhood_graph = get_distance_based_neighbourhood_graph(positions[i*measure_interval], critical_radius, boxsizes[i*measure_interval])
+        neighbourhood_graph = get_distance_based_neighbourhood_graph(positions[i*measure_interval], 2*critical_radius, boxsizes[i*measure_interval])
         max_cluster_ratios[i] = max_cluster_size(neighbourhood_graph)/Nparticles
         clustering_coefficients[i] = clustering_coefficient(positions[i*measure_interval], boxsizes[i*measure_interval], critical_radius)
     return clustering_coefficients, max_cluster_ratios
@@ -142,22 +142,32 @@ def animate(filename):
 
 clusterings = []
 maxclusters = []
-fig = plt.figure()
-fig.clf()
-ax1 = fig.add_subplot(211)
-ax2 = fig.add_subplot(212)
-for i in range(1):
-    filename = "400particles10velocity3time%i.npz" % i
+
+for i in range(10):
+    filename = "No termalizado ni expandido\\Hertzian\\400particles50velocity10time%i.npz" % i
     data = np.load(filename)
     positions = data["positions"]
     boxsizes = data["boxsizes"]
     parameters = data["parameters"]
-    coef, maxcluster = analyze_simulation(positions, boxsizes, 0.9, 6)
-    clusterings.append(coef)
-    maxclusters.append(maxclusters)
-
-    ax1.plot(coef)
-    ax2.plot(maxcluster)
+    sigma = parameters[0]
+    clustering, maxcluster = clustering_and_maxcluster(positions, boxsizes, sigma/2, 10)
+    clusterings.append(clustering)
+    maxclusters.append(maxcluster)
+clusterings = np.array(clusterings)
+maxclusters = np.array(maxclusters)
+Nsteps = len(clusterings[0, :])
+dt = parameters[-1]
+fig = plt.figure()
+fig.clf()
+ax1 = fig.add_subplot(211)
+ax2 = fig.add_subplot(212)
+clusteringavg = np.mean(clusterings, axis=0)
+clusteringstd = np.std(clustering, axis=0)
+maxclusteravg = np.mean(maxclusters, axis=0)
+maxclusterstd = np.std(maxclusters, axis=0)
+time = np.arange(Nsteps)*dt
+ax1.errorbar(time, clusteringavg, clusteringstd)
+ax2.errorbar(time, maxclusteravg, maxclusterstd)
 fig.show()
 
 
