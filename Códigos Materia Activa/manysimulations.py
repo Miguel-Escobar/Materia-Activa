@@ -16,8 +16,8 @@ Ttotal = 10
 Ttransient = 0 # Doesnt quite work
 dt = 1e-3
 Temperatura= 0.0
-packing = .9
-gammaexpansion = np.log(3)/Ttotal
+packing = .1
+gammaexpansion = np.log(1/3)/Ttotal
 mu = 0.1
 peclet = 150
 
