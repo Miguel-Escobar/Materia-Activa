@@ -48,11 +48,11 @@ Nsteps = int(Ttotal/dt)
 Ntransient = int(Ttransient/dt)
 if tipo == 1:
     boxsize = sqrtN*(sigma/2)*np.sqrt(np.pi/packing)
-    Ncells = max(int(boxsize/radiocorte), 1)
+    sqrtNcells = max(int(boxsize/radiocorte), 1)
 if tipo == 2:
     boxsize = sqrtN*(sigma/2)*np.sqrt(np.pi/packing)
-    Ncells = max(int(boxsize/sigma), 1)
-delta = boxsize/Ncells
+    sqrtNcells = max(int(boxsize/sigma), 1)
+delta = boxsize/sqrtNcells
 ratio = 1 + gammaexpansion*dt
 coefphi = np.sqrt(2*D_r*dt)
 coefpos = np.sqrt(2*D_T*dt)
@@ -108,7 +108,7 @@ def pairwiseforce(particle1, particle2, boxsize, type):
     yforce = coef*dy
     return xforce, yforce
 
-def force(particle, boxsize, delta, cell_list, type, ncells=Ncells):
+def force(particle, boxsize, delta, cell_list, type, sqrtNcells):
     """
     Computes the force felt by a particle subject
     to a pairwise interaction potential. Particles is a 2
@@ -122,8 +122,8 @@ def force(particle, boxsize, delta, cell_list, type, ncells=Ncells):
     m0 = int(particle[1]/delta)
     for delx in (-1, 0, 1):
         for dely in (-1, 0 , 1):
-            n = int((n0 + delx) % ncells)
-            m = int((m0 + dely) % ncells)
+            n = int((n0 + delx) % sqrtNcells)
+            m = int((m0 + dely) % sqrtNcells)
             for otherparticle in cell_list[n][m]:
                 if not arrayequal(particle, otherparticle):
                     xforce, yforce = pairwiseforce(particle, otherparticle, boxsize, type)
@@ -140,7 +140,7 @@ def update_phi(oldphi):
 
 def fill_cell_list(particles, delta, emptylist):
     """
-    Fills a 2D cell list of Ncells x Ncells, where each cell
+    Fills a 2D cell list of sqrtNcells x sqrtNcells, where each cell
     contains particles that lie within it. Could be very
     slow.
     """
@@ -204,14 +204,14 @@ def boundary_and_expand(weirdparticles, boxsize, ratio):
     return particles, boxsize, Newcells, delta
 
 
-def create_cell_list(Ncells):
+def create_cell_list(sqrtNcells):
     """
     Creates a linked cell list to be filled later.
     """
     tocopy = []
-    for i in range(Ncells):
+    for i in range(sqrtNcells):
         tocopy.append([])
-        for j in range(Ncells):
+        for j in range(sqrtNcells):
             tocopy[i].append([])
     return tocopy
 
@@ -222,11 +222,11 @@ for M in range(10):
     Ntransient = int(Ttransient/dt)
     if tipo == 1:
         boxsize = sqrtN*(sigma/2)*np.sqrt(np.pi/packing)
-        Ncells = max(int(boxsize/radiocorte), 1)
+        sqrtNcells = max(int(boxsize/radiocorte), 1)
     if tipo == 2:
         boxsize = sqrtN*(sigma/2)*np.sqrt(np.pi/packing)
-        Ncells = max(int(boxsize/sigma), 1)
-    delta = boxsize/Ncells
+        sqrtNcells = max(int(boxsize/sigma), 1)
+    delta = boxsize/sqrtNcells
     ratio = 1 + gammaexpansion*dt
     coefphi = np.sqrt(2*D_r*dt)
     coefpos = np.sqrt(2*D_T*dt)
@@ -236,7 +236,7 @@ for M in range(10):
     store_positions = np.zeros((Nsteps//frameskip, Nparticles, 2))
     store_boxsize = np.zeros((Nsteps//frameskip))
     k=0
-    tocopy = create_cell_list(Ncells)
+    tocopy = create_cell_list(sqrtNcells)
     expansionratio = 1
     for t in trange(Nsteps + Ntransient):
         if t == Ntransient:
@@ -245,15 +245,15 @@ for M in range(10):
         if expansionratio == 1: # Could be faster this way.
             cell_list = copy.deepcopy(tocopy)
         else:
-            cell_list = create_cell_list(Ncells) # Could be optimized so it creates a cell_list each time Ncells changes.
+            cell_list = create_cell_list(sqrtNcells) # Could be optimized so it creates a cell_list each time sqrtNcells changes.
         cell_list = fill_cell_list(particles, delta, cell_list)
         forces = np.zeros((Nparticles, 2))
         for i in range(Nparticles):
             particle = particles[i]
-            forces[i] = force(particle, boxsize, delta, cell_list, tipo, ncells=Ncells)
+            forces[i] = force(particle, boxsize, delta, cell_list, tipo, sqrtNcells)
         phi = update_phi(phi)
         weirdparticles = update_positions(particles, forces, phi, velocitymagnitude, dt)
-        particles, boxsize, Ncells, delta = boundary_and_expand(weirdparticles, boxsize, expansionratio)
+        particles, boxsize, sqrtNcells, delta = boundary_and_expand(weirdparticles, boxsize, expansionratio)
 
         if t >= Ntransient:
             if t % frameskip == 0:

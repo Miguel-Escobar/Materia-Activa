@@ -124,3 +124,64 @@ def animate(filename):
         if tipo == 2:
             anim.save('harmonic%i.mp4' % Nparticles, writer=writer)
 
+def fill_cell_list(particles, delta, emptylist):
+    """
+    Fills a 2D cell list of Ncells x Ncells, where each cell
+    contains particles that lie within it. Could be very
+    slow.
+    """
+    for particle in particles:
+        nn = int(particle[0]//delta)
+        mm = int(particle[1]//delta)
+        emptylist[nn][mm].append(particle)
+
+    return emptylist
+
+def create_cell_list(sqrtNcells):
+    """
+    Creates a linked cell list to be filled later.
+    """
+    tocopy = []
+    for i in range(sqrtNcells):
+        tocopy.append([])
+        for j in range(sqrtNcells):
+            tocopy[i].append([])
+    return tocopy
+
+def density_fluctuations(particles, boxsize, Npoints):
+    Nparticles = len(particles[:,0])
+    avg_particles_in_cells = []
+    variance = []
+    for sqrtNcells in [int(2**(n+1)) for n in range(Npoints)]:
+        Ncells = sqrtNcells*sqrtNcells
+        avg = Nparticles/Ncells
+        cellsize = boxsize/sqrtNcells
+        cell_list = fill_cell_list(particles, cellsize, create_cell_list(sqrtNcells))
+        unbiased_variance_estimator = 0
+        for xindex in range(sqrtNcells):
+            for yindex in range(sqrtNcells):
+                Nparticles = len(cell_list[xindex][yindex])
+                unbiased_variance_estimator += (Nparticles - avg)**2
+        unbiased_variance_estimator *= 1/(Ncells-1)
+        variance.append(unbiased_variance_estimator)
+        avg_particles_in_cells.append(avg)
+    return np.array(avg_particles_in_cells), np.array(variance)
+
+def density_fluctuations_vs_time(positions, boxsizes, Ntimes, Npoints):
+    timeinterval = int(len(positions[:,0,0])/Ntimes)
+    avg_n_arrays = []
+    var_arrays = []
+    for i in range(Ntimes):
+        returnedtuple = density_fluctuations(positions[i*timeinterval], boxsizes[i*timeinterval], Npoints)
+        avg_n_arrays.append(returnedtuple[0])
+        var_arrays.append(returnedtuple[1])
+    return np.array(avg_n_arrays), np.array(var_arrays)
+
+
+
+
+
+
+
+
+    
