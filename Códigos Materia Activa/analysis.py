@@ -29,22 +29,23 @@ La idea es sacar un fit de linea recta. Más o menos 5 puntos. Puedo graficar el
 - Plotear en función de la packing fraction.
 
 """
-Nmeasurements = 5
-
+Nmeasurements = 10
+Measureinterval = 10
+Densitydistributionpoints = 3
 clusterings = []
 maxclusters = []
 density_fluctuations_avgn = []
 density_fluctuations_varn = []
 
 for i in range(Nmeasurements):
-    filename = "No termalizado si expandido\\Hertzian\\400particles50velocity10time%i.npz" % i
+    filename = "No termalizado si contraido\\Hertzian\\400particles50velocity10time%i.npz" % i
     data = np.load(filename)
     positions = data["positions"]
     boxsizes = data["boxsizes"]
     parameters = data["parameters"]
     sigma = parameters[0]
-    clustering, maxcluster = clustering_and_maxcluster(positions, boxsizes, sigma/2, 10)
-    avg_n_vs_time, var_vs_time = density_fluctuations_vs_time(positions, boxsizes, 10, 3)
+    clustering, maxcluster = clustering_and_maxcluster(positions, boxsizes, sigma/2, Measureinterval)
+    avg_n_vs_time, var_vs_time = density_fluctuations_vs_time(positions, boxsizes, 10, Densitydistributionpoints)
     density_fluctuations_avgn.append(avg_n_vs_time)
     density_fluctuations_varn.append(var_vs_time)
     clusterings.append(clustering)
@@ -61,34 +62,24 @@ for time in range(len(fittable_var[:,0])-1):
 
 
 
-exponent_vs_time = np.array(exponent_vs_time)
 clusterings = np.array(clusterings)
 maxclusters = np.array(maxclusters)
-Nsteps = len(clusterings[0, :])
+Nsteps = len(boxsizes)
 dt = parameters[-1]
+frameskip = parameters[-2]
 Nparticles = parameters[3]*parameters[3]
 clusteringavg = np.mean(clusterings, axis=0)
 clusteringstderr = np.std(clusterings, axis=0)/np.sqrt(Nmeasurements)
 maxclusteravg = np.mean(maxclusters, axis=0)
 maxclusterstderr = np.std(maxclusters, axis=0)/np.sqrt(Nmeasurements)
-time = np.arange(Nsteps)*dt
-packingfractions = Nparticles*(np.pi*(sigma/2)**2)/boxsizes
+time = np.arange(Nsteps)*dt*frameskip
+exponent_vs_time = np.array(exponent_vs_time)
+packing_fractions = Nparticles*(np.pi*(sigma/2)**2)/(boxsizes[[i*Measureinterval for i in range(int(Nsteps/Measureinterval))]]**2)
+plottable_time = time[[i*Measureinterval for i in range(int(Nsteps/Measureinterval))]]
+np.savez("analyzed_data", clusterings = clusterings, maxclusters=maxclusters, time=time, plottable_time=plottable_time, \
+        clusteringavg=clusteringavg, clusteringstderr=clusteringstderr, maxclusteravg=maxclusteravg, maxclusterstderr=maxclusterstderr,\
+        packing_fractions=packing_fractions)
 
-
-
-
-fig = plt.figure()
-fig.clf()
-ax1 = fig.add_subplot(211)
-ax2 = fig.add_subplot(212)
-ax1.errorbar(time, clusteringavg, clusteringstderr)
-ax2.errorbar(time, maxclusteravg, maxclusterstderr)
-ax1.set_xlabel("Time")
-ax2.set_xlabel("Time")
-ax1.set_ylabel(r"$\langle c_n(t) \rangle$")
-ax2.set_ylabel(r"Largest Cluster Size")
-fig.tight_layout()
-fig.show()
 
 
     
