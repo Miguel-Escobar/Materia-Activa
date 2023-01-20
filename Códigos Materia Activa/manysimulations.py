@@ -11,13 +11,14 @@ pr = cProfile.Profile() # Descomentar lineas para utilizar.
 
 # Parametros y variables globales:
 
+Ncorridas = 3
 sqrtN=20
 Ttotal = 10
 Ttransient = 0 # Doesnt quite work
 dt = 1e-3
 Temperatura= 0.0
-packing = .1
-gammaexpansion = np.log(1/3)/Ttotal
+packing = .9
+gammaexpansion = np.log(3)/Ttotal
 mu = 0.1
 peclet = 150
 
@@ -33,7 +34,7 @@ alpha = 5/2 # 2 para potencial armónico, 5/2 para Hertziano.
 
 # Parametros activos:
 
-velocitymagnitude = 50
+velocitymagnitude = 5
 D_r = 3*10/(peclet*sigma)
 D_T = 0.1 # DE MOMENTO NO HACE NADA
 
@@ -216,7 +217,7 @@ def create_cell_list(sqrtNcells):
     return tocopy
 
 
-for M in range(10):
+for M in range(Ncorridas):
     Nparticles = sqrtN*sqrtN
     Nsteps = int(Ttotal/dt)
     Ntransient = int(Ttransient/dt)
@@ -261,7 +262,7 @@ for M in range(10):
                 store_boxsize[k] = boxsize
                 k+=1
     parameters = np.array([sigma, epsilon, radiocorte, sqrtN, packing, mu, D_r, D_T, gammaexpansion, peclet, tipo, frameskip, dt])
-    np.savez_compressed("%iparticles%ivelocity%itime%i" % (Nparticles, velocitymagnitude, Ttotal, M), positions=store_positions, boxsizes=store_boxsize, parameters=parameters)
+    np.savez_compressed("%iparticles%.1fvelocity%itime%i" % (Nparticles, velocitymagnitude, Ttotal, M), positions=store_positions, boxsizes=store_boxsize, parameters=parameters)
 
 # pr.disable()
 # s = io.StringIO()
