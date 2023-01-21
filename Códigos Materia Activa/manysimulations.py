@@ -17,8 +17,8 @@ Ttotal = 10
 Ttransient = 0 # Doesnt quite work
 dt = 1e-3
 Temperatura= 0.0
-packing = .9
-gammaexpansion = np.log(3)/Ttotal
+packing = .1
+gammaexpansion = np.log(1/3)/Ttotal
 mu = 0.1
 peclet = 150
 
@@ -263,6 +263,7 @@ for M in range(Ncorridas):
                 k+=1
     parameters = np.array([sigma, epsilon, radiocorte, sqrtN, packing, mu, D_r, D_T, gammaexpansion, peclet, tipo, frameskip, dt])
     np.savez_compressed("%iparticles%.1fvelocity%itime%i" % (Nparticles, velocitymagnitude, Ttotal, M), positions=store_positions, boxsizes=store_boxsize, parameters=parameters)
+
 
 # pr.disable()
 # s = io.StringIO()

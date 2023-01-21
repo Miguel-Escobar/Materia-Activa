@@ -9,9 +9,10 @@ from numba import njit
 from tqdm import trange
 from analysis_functions import *
 from scipy.stats import linregress
-#rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\Desktop\\ffmpeg\\bin\\ffmpeg.exe"
-rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\OneDrive\\Escritorio\\ffmpeg-2023-01-01-git-62da0b4a74-essentials_build\\bin\\ffmpeg.exe"
-writer = FFMpegWriter(fps=30, metadata=dict(artist='Me'), bitrate=2800)
+import copy, cProfile, pstats, io
+from pstats import SortKey
+pr = cProfile.Profile() # Descomentar lineas para utilizar.
+
 """
 Datos interesantes:
 
@@ -29,7 +30,8 @@ La idea es sacar un fit de linea recta. Más o menos 5 puntos. Puedo graficar el
 - Plotear en función de la packing fraction.
 
 """
-Nmeasurements = 10
+Nmeasurements = 3
+velocity = 5.0
 Measureinterval = 10
 Densitydistributionpoints = 3
 clusterings = []
@@ -37,8 +39,9 @@ maxclusters = []
 density_fluctuations_avgn = []
 density_fluctuations_varn = []
 
+pr.enable() # Activas el profiler
 for i in range(Nmeasurements):
-    filename = "No termalizado si contraido\\Hertzian\\400particles50velocity10time%i.npz" % i
+    filename = "No termalizado si contraido\\Hertzian\\400particles%.1fvelocity10time%i.npz" % (velocity, i)
     data = np.load(filename)
     positions = data["positions"]
     boxsizes = data["boxsizes"]
@@ -61,6 +64,18 @@ for time in range(len(fittable_var[:,0])-1):
     exponent_vs_time.append(fiteo.slope)
 
 
+pr.disable() # Desactivas el profiler
+
+s = io.StringIO()
+sortby = SortKey.CUMULATIVE
+ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+ps.print_stats()
+with open('test.txt', 'w+') as f: # Guardas los resultados en un .txt
+    f.write(s.getvalue())
+#rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\Desktop\\ffmpeg\\bin\\ffmpeg.exe"
+rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\OneDrive\\Escritorio\\ffmpeg-2023-01-01-git-62da0b4a74-essentials_build\\bin\\ffmpeg.exe"
+writer = FFMpegWriter(fps=30, metadata=dict(artist='Me'), bitrate=2800)
+
 
 clusterings = np.array(clusterings)
 maxclusters = np.array(maxclusters)
@@ -76,15 +91,7 @@ time = np.arange(Nsteps)*dt*frameskip
 exponent_vs_time = np.array(exponent_vs_time)
 packing_fractions = Nparticles*(np.pi*(sigma/2)**2)/(boxsizes[[i*Measureinterval for i in range(int(Nsteps/Measureinterval))]]**2)
 plottable_time = time[[i*Measureinterval for i in range(int(Nsteps/Measureinterval))]]
-np.savez("analyzed_data", clusterings = clusterings, maxclusters=maxclusters, time=time, plottable_time=plottable_time, \
+np.savez("analyzed_data%.1fvelocity" % velocity, clusterings = clusterings, maxclusters=maxclusters, time=time, plottable_time=plottable_time, \
         clusteringavg=clusteringavg, clusteringstderr=clusteringstderr, maxclusteravg=maxclusteravg, maxclusterstderr=maxclusterstderr,\
         packing_fractions=packing_fractions)
-
-
-
-    
-
-
-    
-
 
