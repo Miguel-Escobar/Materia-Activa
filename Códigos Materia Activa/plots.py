@@ -2,8 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-dataexpanded = np.load("No termalizado si expandido\\Hertzian\\analyzed_data0.1velocity.npz")
-datacontracted = np.load("No termalizado si contraido\\Hertzian\\analyzed_data0.1velocity.npz")
+dataexpanded = np.load("No termalizado si expandido\\Hertzian\\analyzed_data5.0velocity.npz")
+datacontracted = np.load("No termalizado si contraido\\Hertzian\\analyzed_data5.0velocity.npz")
 fig = plt.figure()
 fig.clf()
 ax1 = fig.add_subplot(211)
