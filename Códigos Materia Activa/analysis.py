@@ -30,8 +30,8 @@ La idea es sacar un fit de linea recta. Más o menos 5 puntos. Puedo graficar el
 - Plotear en función de la packing fraction.
 
 """
-Nmeasurements = 3
-velocity = 5.0
+Nmeasurements = 10
+velocity = 0.1
 Measureinterval = 10
 Densitydistributionpoints = 3
 clusterings = []
@@ -41,7 +41,7 @@ density_fluctuations_varn = []
 
 pr.enable() # Activas el profiler
 for i in range(Nmeasurements):
-    filename = "No termalizado si contraido\\Hertzian\\400particles%.1fvelocity10time%i.npz" % (velocity, i)
+    filename = "No termalizado ni expandido\\Hertzian\\0.9initialpf400particles%.1fvelocity10time%i.npz" % (velocity, i)
     data = np.load(filename)
     positions = data["positions"]
     boxsizes = data["boxsizes"]
