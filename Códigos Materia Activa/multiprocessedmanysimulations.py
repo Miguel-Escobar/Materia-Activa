@@ -31,6 +31,15 @@ epsilon=1
 epsilonharmonico = 1e4 # Determina la fuerza máxima que puede sentir la partícula al multiplicarlo por mu.
 radiocorte = sigma*2**(1/6) # 2.5sigma era antes
 alpha = 5/2 # 2 para potencial armónico, 5/2 para Hertziano.
+""" 
+potential_params = {
+    "tipo": tipo,
+    "sigma": sigma
+    "masa": masa
+    "epsilon": epsilon
+    "epsilonharmonico": epsilonharmonico
+    "radiocorte" = radiocorte
+ } """
 
 # Parametros activos:
 
