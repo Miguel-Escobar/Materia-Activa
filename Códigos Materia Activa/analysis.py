@@ -1,15 +1,7 @@
-import matplotlib.pyplot as plt
-from matplotlib import rcParams
-from matplotlib.animation import FuncAnimation, FFMpegWriter
 import numpy as np
-from scipy.spatial import Voronoi, ConvexHull, voronoi_plot_2d
-import networkx as nx
-from tess import Container
-from numba import njit
-from tqdm import trange
 from analysis_functions import *
 from scipy.stats import linregress
-import copy, cProfile, pstats, io
+import cProfile, pstats, io
 from pstats import SortKey
 pr = cProfile.Profile() # Descomentar lineas para utilizar.
 
@@ -29,11 +21,17 @@ La idea es sacar un fit de linea recta. Más o menos 5 puntos. Puedo graficar el
 
 - Plotear en función de la packing fraction.
 
+- Oswald Ripening - fenomeno de aerosol condensado
+
+- 
+
 """
-Nmeasurements = 10
-velocity = 1.0
+Nmeasurements = 5
+velocity = 10.0
 Measureinterval = 10
+time = 5
 Densitydistributionpoints = 3
+initialpf = 0.9
 clusterings = []
 maxclusters = []
 density_fluctuations_avgn = []
@@ -41,7 +39,7 @@ density_fluctuations_varn = []
 
 pr.enable() # Activas el profiler
 for i in range(Nmeasurements):
-    filename = "No termalizado ni expandido\\Hertzian\\400particles%.1fvelocity10time%i.npz" % (velocity, i)
+    filename = "Códigos Materia Activa\\Termalizado y expandido\\Hertzian\\%.1finitialpf400particles%.1fvelocity%itime%i.npz" % (initialpf,velocity,time, i)
     data = np.load(filename)
     positions = data["positions"]
     boxsizes = data["boxsizes"]
@@ -72,9 +70,6 @@ ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
 ps.print_stats()
 with open('test.txt', 'w+') as f: # Guardas los resultados en un .txt
     f.write(s.getvalue())
-#rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\Desktop\\ffmpeg\\bin\\ffmpeg.exe"
-rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\OneDrive\\Escritorio\\ffmpeg-2023-01-01-git-62da0b4a74-essentials_build\\bin\\ffmpeg.exe"
-writer = FFMpegWriter(fps=30, metadata=dict(artist='Me'), bitrate=2800)
 
 
 clusterings = np.array(clusterings)

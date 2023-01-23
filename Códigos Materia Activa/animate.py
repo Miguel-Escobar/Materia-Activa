@@ -7,7 +7,7 @@ rcParams['animation.ffmpeg_path'] = "C:\\Users\\migue\\OneDrive\\Escritorio\\ffm
 writer = FFMpegWriter(fps=30, metadata=dict(artist='Me'), bitrate=2800)
 
 
-filename = "No termalizado ni expandido\\Hertzian\\400particles1.0velocity10time1.npz"
+filename = "Códigos Materia Activa\\Termalizado y contraido\\Hertzian\\0.1initialpf400particles10.0velocity5time0.npz"
 
 data = np.load(filename)
 store_positions = data["positions"]

@@ -8,8 +8,8 @@ def fittable_relaxation_func(time, relaxtime, constant):
 
 
 if kindofanalysis == "hist":
-    dataexpanded = np.load("No termalizado si expandido\\Hertzian\\analyzed_data0.1velocity.npz")
-    datacontracted = np.load("No termalizado si contraido\\Hertzian\\analyzed_data0.1velocity.npz")
+    dataexpanded = np.load("Códigos Materia Activa\\Termalizado y expandido\\Hertzian\\analyzed_data10.0velocity5time.npz")
+    datacontracted = np.load("Códigos Materia Activa\\Termalizado y contraido\\Hertzian\\analyzed_data10.0velocity5time.npz")
     fig = plt.figure()
     fig.clf()
     ax1 = fig.add_subplot(211)
@@ -28,14 +28,15 @@ if kindofanalysis == "hist":
     fig.show()
 
 elif kindofanalysis == "rel":
-    dataconstant = np.load("No termalizado ni expandido\\Hertzian\\analyzed_data1.0velocity0.1initialpf.npz")
-    params = curve_fit(fittable_relaxation_func, dataconstant["plottable_time"], dataconstant["maxclusteravg"], p0=[1,1],sigma=dataconstant["maxclusterstderr"])
+    dataconstant = np.load("Códigos Materia Activa\\No termalizado ni expandido\\Hertzian\\analyzed_data10.0velocity0.1initialpf.npz")
+    params = curve_fit(fittable_relaxation_func, dataconstant["plottable_time"], dataconstant["clusteringavg"], p0=[0.4,10])
+    print("The relaxation time is: %.3f" % params[0][0])
     fig = plt.figure()
     fig.clf()
     ax1 = fig.add_subplot(211)
     ax2 = fig.add_subplot(212)
     ax1.errorbar(dataconstant["plottable_time"], dataconstant["clusteringavg"], dataconstant["clusteringstderr"])
-    ax2.errorbar(dataconstant["plottable_time"][12:], dataconstant["maxclusteravg"][12:], dataconstant["maxclusterstderr"][12:])
+    ax2.errorbar(dataconstant["plottable_time"], dataconstant["maxclusteravg"], dataconstant["maxclusterstderr"])
     ax1.set_xlabel("Time")
     ax2.set_xlabel("Time")
     ax1.set_ylabel(r"$\langle c_n(t) \rangle$")

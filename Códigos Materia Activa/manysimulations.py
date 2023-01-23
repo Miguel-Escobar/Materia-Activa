@@ -11,14 +11,14 @@ pr = cProfile.Profile() # Descomentar lineas para utilizar.
 
 # Parametros y variables globales:
 
-Ncorridas = 10
+Ncorridas = 5
 sqrtN=20
-Ttotal = 10
-Ttransient = 0 
+Ttotal = 2
+Ttransient = 2
 dt = 1e-3
 Temperatura= 0.0
-packing = .9
-gammaexpansion = np.log(1)/Ttotal
+packing = .1
+gammaexpansion = np.log(1/3)/Ttotal
 mu = 0.1
 peclet = 150
 
@@ -34,7 +34,7 @@ alpha = 5/2 # 2 para potencial armónico, 5/2 para Hertziano.
 
 # Parametros activos:
 
-velocitymagnitude = 1.0
+velocitymagnitude = 10.0
 D_r = 3*10/(peclet*sigma)
 D_T = 0.1 # DE MOMENTO NO HACE NADA
 
@@ -42,6 +42,7 @@ D_T = 0.1 # DE MOMENTO NO HACE NADA
 
 frameskip = 10 # Stores data every 10 frames.
 
+assert False
 # Funciones de otras cosas:
 
 Nparticles = sqrtN*sqrtN
@@ -58,10 +59,6 @@ ratio = 1 + gammaexpansion*dt
 coefphi = np.sqrt(2*D_r*dt)
 coefpos = np.sqrt(2*D_T*dt)
 sqrtdt = np.sqrt(dt)
-
-# Profiling:
-
-# pr.enable()
 
 # Funciones:
 
@@ -216,11 +213,11 @@ def create_cell_list(sqrtNcells):
             tocopy[i].append([])
     return tocopy
 
+# Profiling:
+
+# pr.enable()
 
 for M in range(Ncorridas):
-    Nparticles = sqrtN*sqrtN
-    Nsteps = int(Ttotal/dt)
-    Ntransient = int(Ttransient/dt)
     if tipo == 1:
         boxsize = sqrtN*(sigma/2)*np.sqrt(np.pi/packing)
         sqrtNcells = max(int(boxsize/radiocorte), 1)
@@ -228,10 +225,6 @@ for M in range(Ncorridas):
         boxsize = sqrtN*(sigma/2)*np.sqrt(np.pi/packing)
         sqrtNcells = max(int(boxsize/sigma), 1)
     delta = boxsize/sqrtNcells
-    ratio = 1 + gammaexpansion*dt
-    coefphi = np.sqrt(2*D_r*dt)
-    coefpos = np.sqrt(2*D_T*dt)
-    sqrtdt = np.sqrt(dt)
 
     particles, phi = condicioninicial(Nparticles, Temperatura, masa, boxsize)
     store_positions = np.zeros((Nsteps//frameskip, Nparticles, 2))
@@ -242,7 +235,6 @@ for M in range(Ncorridas):
     for t in trange(Nsteps + Ntransient):
         if t == Ntransient:
             expansionratio = ratio
-
         if expansionratio == 1: # Could be faster this way.
             cell_list = copy.deepcopy(tocopy)
         else:
