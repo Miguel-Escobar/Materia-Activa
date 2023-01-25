@@ -43,3 +43,17 @@ elif kindofanalysis == "rel":
     ax2.set_ylabel(r"Largest Cluster Size")
     fig.tight_layout()
     fig.show()
+elif kindofanalysis == "secretposter":
+    dataexpanded = np.load("Códigos Materia Activa\\Termalizado y expandido\\Hertzian\\analyzed_data10.0velocity5time.npz")
+    datacontracted = np.load("Códigos Materia Activa\\Termalizado y contraido\\Hertzian\\analyzed_data10.0velocity5time.npz")
+    fig = plt.figure()
+    fig.clf()
+    ax1 = fig.add_subplot(111)
+    ax1.errorbar(dataexpanded["packing_fractions"], dataexpanded["maxclusteravg"], dataexpanded["maxclusterstderr"], label="Expansion", color="firebrick")
+    ax1.errorbar(datacontracted["packing_fractions"], datacontracted["maxclusteravg"], datacontracted["maxclusterstderr"], label="Contraction", color="silver")
+    ax1.set_xlabel("Packing Fraction")
+    ax1.set_ylabel(r"Largest Cluster Size")
+    ax1.legend()
+    fig.tight_layout()
+    fig.show()
+

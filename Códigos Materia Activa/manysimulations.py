@@ -42,7 +42,7 @@ D_T = 0.1 # DE MOMENTO NO HACE NADA
 
 frameskip = 10 # Stores data every 10 frames.
 
-assert False
+
 # Funciones de otras cosas:
 
 Nparticles = sqrtN*sqrtN
