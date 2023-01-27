@@ -253,6 +253,7 @@ for M in range(Ncorridas):
                 store_positions[k] = particles.copy()
                 store_boxsize[k] = boxsize
                 k+=1
+                
     parameters = np.array([sigma, epsilon, radiocorte, sqrtN, packing, mu, D_r, D_T, gammaexpansion, peclet, tipo, frameskip, dt])
     np.savez_compressed("%.1finitialpf%iparticles%.1fvelocity%itime%i" % (packing, Nparticles, velocitymagnitude, Ttotal, M), positions=store_positions, boxsizes=store_boxsize, parameters=parameters)
 
